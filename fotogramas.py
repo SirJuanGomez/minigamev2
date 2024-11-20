@@ -30,7 +30,7 @@ alto_ventana = 600
 pantalla = pygame.display.set_mode((ancho_ventana, alto_ventana))
 
 # Cargar la hoja de sprites
-hoja_sprites = pygame.image.load("naves/img/10.png").convert_alpha()
+hoja_sprites = pygame.image.load("plataformas/img/7 Bird/Walk.png").convert_alpha()
 
 # Calcular el tamaño de cada fotograma
 fotograma_width, fotograma_height = calcular_tamano_fotograma(hoja_sprites)

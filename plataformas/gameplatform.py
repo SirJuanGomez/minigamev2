@@ -19,12 +19,12 @@ class GamePlatform(pygame.sprite.Sprite):
         #Primer Tipo Plataforma 
         tiles.append({
             "unique": "Tile_30.png",
-            "beginning": "Tile_44.png",
-            "middle": "Tile_10.png",
-            "end": "Tile_12.png",
-            "beginning_bottom": "Tile_91.png",
-            "middle_bottom": "Tile_14.png",
-            "end_bottom": "Tile_16.png"
+            "beginning": "Tile_01.png",
+            "middle": "Tile_02.png",
+            "end": "Tile_03.png",
+            "beginning_bottom": "Tile_24.png",
+            "middle_bottom": "Tile_24.png",
+            "end_bottom": "Tile_24.png"
         })
         #Plataforma Flotante
         tiles.append({
@@ -39,9 +39,9 @@ class GamePlatform(pygame.sprite.Sprite):
             "beginning": "Tile_21.png",
             "middle": "Tile_22.png",
             "end": "Tile_23.png",
-            "beginning_bottom": "Tile_25.png",
-            "middle_bottom": "Tile_26.png",
-            "end_bottom": "Tile_28.png"
+            "beginning_bottom": "Tile_65.png",
+            "middle_bottom": "Tile_65.png",
+            "end_bottom": "Tile_65.png"
         })
         
         #Tomar un indice randomio

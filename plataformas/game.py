@@ -10,6 +10,7 @@ from money import Money
 from enemy import Enemy
 from shield import Shield
 import globals
+import json
 
 
 class Game:
@@ -21,15 +22,14 @@ class Game:
         pygame.init()
         pygame.display.set_caption("Plataformas")
 
-        #2 fondos para manejar el paralaje. El detalle puedes leerlo
-        #en background.py
-        self.background1 = Background(True, .05, "2", 0)
-        self.background2 = Background(False, .2, "3", 40)
+        # Backgrounds for parallax effect
+        self.background1 = Background(True, .2, "2", 0)
+        self.background2 = Background(True, .2, "3", 0)
 
         self.font = pygame.font.Font('freesansbold.ttf', 32)
         self.smaller_font = pygame.font.Font('freesansbold.ttf', 22)
 
-        #Sonidillos
+        # Sounds
         self.powerup_sound = pygame.mixer.Sound("plataformas/sound/Card_Sound.wav")
         self.powerup_sound.set_volume(.1)
         self.death_sound = pygame.mixer.Sound("plataformas/sound/Dead_Sound.mp3")
@@ -37,13 +37,13 @@ class Game:
         self.initialize()
 
     def initialize(self):
+        """Initialize all game elements."""
         self.player = Player()
         self.no_face = False
         self.dead = False
 
         self.platforms = []
-
-        #La primera plataforma grande
+        # First platform
         platform = GamePlatform(20, 0)
         self.platforms.append(platform)
         self.difficulty = 1
@@ -58,7 +58,7 @@ class Game:
         self.text_score = None
         self.text_score_rect = None
 
-        #powerups = el dinero. se llama asi porque segun yo iba a agregar mas pero nunca lo hice
+        # Power-ups: money
         self.powerups = []
         self.group_powerups = pygame.sprite.Group()
         pygame.time.set_timer(CREATE_NEW_MONEY, 1000)
@@ -71,6 +71,36 @@ class Game:
         self.group_shields = pygame.sprite.Group()
         pygame.time.set_timer(CREATE_NEW_SHIELD, 10000)
 
+    def restart(self):
+        """Reset the game state for a full restart."""
+        # Reset the game elements
+        self.player = Player()
+        self.no_face = False
+        self.dead = False
+        self.platforms.clear()
+        self.group_platforms.empty()
+        self.powerups.clear()
+        self.group_powerups.empty()
+        self.enemies.clear()
+        self.group_enemies.empty()
+        self.shields.clear()
+        self.group_shields.empty()
+
+        # Recreate the first platform and reset difficulty and score
+        platform = GamePlatform(20, 0)
+        self.platforms.append(platform)
+        self.group_platforms.add(platform)
+
+        self.difficulty = 1
+        self.score = 0
+        self.start_time = pygame.time.get_ticks()
+        self.text_score = None
+        self.text_score_rect = None
+
+        pygame.time.set_timer(CREATE_NEW_MONEY, 1000)
+        pygame.time.set_timer(CREATE_NEW_ENEMY, 15000)
+        pygame.time.set_timer(CREATE_NEW_SHIELD, 10000)
+
     def update(self, delta_time):
         events = pygame.event.get()
 
@@ -81,9 +111,12 @@ class Game:
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     self.running = False
-                # Handle spacebar and up arrow key for jumping
                 if event.key == K_SPACE or event.key == K_UP:
                     self.player.jump()
+
+                # Check for R key to restart
+                if event.key == K_r and self.dead:
+                    self.restart()
 
             elif event.type == KEYUP:
                 if event.key == K_SPACE or event.key == K_UP:
@@ -91,7 +124,6 @@ class Game:
 
             elif event.type == CREATE_NEW_PLATFORM:
                 self.platformWillBeCreated = False
-                #Basar el tamano en la dificultad
                 min = 1
                 if self.difficulty <= 3:
                     min = 3
@@ -100,53 +132,56 @@ class Game:
                     max = 4
                 tileNumber = random.randrange(min, max)
 
-                #Basar el espacio entre plataformas en la dificultad
-                min_space = 90 + (self.difficulty*2)
+                min_space = 90 + (self.difficulty * 2)
                 if min_space > 150:
                     min_space = 150
-                max_space = 200 + (self.difficulty*2)
+                max_space = 200 + (self.difficulty * 2)
                 if max_space > 350:
                     max_space = 350
 
                 space = random.randrange(min_space, max_space)
-                
+
                 platform = GamePlatform(tileNumber, ancho_ventana + space)
                 self.platforms.append(platform)
                 self.group_platforms.add(platform)
+
             elif event.type == CREATE_NEW_MONEY:
                 money = Money()
                 self.powerups.append(money)
                 self.group_powerups.add(money)
 
-                #Calculos para ver cuando crear mas dinero, segun la dificultad
-                min_time = 4000 - self.difficulty*500
+                min_time = 4000 - self.difficulty * 500
                 if min_time < 2000:
                     min_time = 2000
-                max_time = 10000 - self.difficulty*500
+                max_time = 10000 - self.difficulty * 500
                 if max_time < 4000:
                     max_time = 4000
 
                 pygame.time.set_timer(CREATE_NEW_MONEY, random.randint(3000, 10000))
+
             elif event.type == CREATE_NEW_ENEMY:
                 enemy = Enemy()
                 self.enemies.append(enemy)
                 self.group_enemies.add(enemy)
 
-                min_time = 4000 - self.difficulty*500
+                min_time = 4000 - self.difficulty * 500
                 if min_time < 2000:
                     min_time = 2000
-                max_time = 10000 - self.difficulty*500
+                max_time = 10000 - self.difficulty * 500
                 if max_time < 4000:
                     max_time = 4000
+
                 pygame.time.set_timer(CREATE_NEW_ENEMY, random.randint(min_time, max_time))
+
             elif event.type == CREATE_NEW_SHIELD:
                 shield = Shield()
                 self.shields.append(shield)
                 self.group_shields.add(shield)
-                min_time = 4000 - self.difficulty*500
+
+                min_time = 4000 - self.difficulty * 500
                 if min_time < 2000:
                     min_time = 2000
-                max_time = 10000 - self.difficulty*500
+                max_time = 10000 - self.difficulty * 500
                 if max_time < 4000:
                     max_time = 4000
 
@@ -158,15 +193,15 @@ class Game:
             self.player.update(delta_time, self.group_platforms, self.group_powerups, self.group_enemies, self.group_shields)
             if self.player.dead or self.player.rect.top > alto_ventana:
                 if self.player.shield:
-                    #Moriste pero tienes escudo? No morir!
+                    # If dead but with a shield, save the player
                     self.player.shield_save()
                 else:
-                    #No tenias escudo. Dead
+                    # Dead, stop the game
                     self.dead = True
                     pygame.mixer.Sound.play(self.death_sound)
 
             if self.player.addScore > 0:
-                self.score += (self.player.addScore*1000)
+                self.score += (self.player.addScore * 1000)
                 self.player.addScore = 0
                 pygame.mixer.Sound.play(self.powerup_sound)
 
@@ -181,50 +216,101 @@ class Game:
                 self.platformWillBeCreated = True
                 pygame.event.post(pygame.event.Event(CREATE_NEW_PLATFORM))
 
-            seconds = int( (pygame.time.get_ticks() - self.start_time) / 1000)
-            self.difficulty = int( 1+(seconds/10) )
-            globals.game_speed = 1 + (self.difficulty*.2)
+            seconds = int((pygame.time.get_ticks() - self.start_time) / 1000)
+            self.difficulty = int(1 + (seconds / 10))
+            globals.game_speed = 1 + (self.difficulty * .2)
 
-            self.score += globals.game_speed * delta_time
-            self.text_score = self.font.render('Score: ' + str(int(self.score/1000)), True, (255,255,255))
+            # Only update score if not dead
+            if not self.dead:
+                self.score += globals.game_speed * delta_time
+
+            self.text_score = self.font.render('Puntuacion: ' + str(int(self.score / 1000)), True, (255, 255, 255))
             self.text_score_rect = self.text_score.get_rect()
             self.text_score_rect.y = 10
-            self.text_score_rect.x = (ancho_ventana//2) - (self.text_score_rect.width//2)
+            self.text_score_rect.x = (ancho_ventana // 2) - (self.text_score_rect.width // 2)
 
     def render(self):
-        self.screen.fill((92, 89, 92))
+            self.screen.fill((92, 89, 92))
 
-        self.background1.render(self.screen)
-        self.background2.render(self.screen)
+            self.background1.render(self.screen)
+            self.background2.render(self.screen)
 
-        for platform in self.platforms:
-            self.screen.blit(platform.surf, platform.rect)
+            for platform in self.platforms:
+                self.screen.blit(platform.surf, platform.rect)
 
-        self.screen.blit(self.player.surf, self.player.rect)
-        if (self.player.shield):
-            self.screen.blit(self.player.shieldSurf, self.player.shieldRect)
+            self.screen.blit(self.player.surf, self.player.rect)
+            if self.player.shield:
+                self.screen.blit(self.player.shieldSurf, self.player.shieldRect)
 
-        for powerup in self.group_powerups:
-            self.screen.blit(powerup.surf, powerup.rect)
-        for enemy in self.group_enemies.sprites():
-            self.screen.blit(enemy.surf, enemy.rect)
-        for shield in self.group_shields:
-            self.screen.blit(shield.surf, shield.rect)
+            for powerup in self.group_powerups:
+                self.screen.blit(powerup.surf, powerup.rect)
 
-        if self.text_score is not None:
-            self.screen.blit(self.text_score, self.text_score_rect)
+            for enemy in self.group_enemies.sprites():
+                self.screen.blit(enemy.surf, enemy.rect)
+
+            for shield in self.group_shields:
+                self.screen.blit(shield.surf, shield.rect)
+
+            if self.text_score:
+                self.screen.blit(self.text_score, self.text_score_rect)
+
+            if self.dead:
+                self.guardar_puntuacion()
+                self.dead = self.font.render('HAS PERDIDO', True, (255, 255, 255), (0, 0, 0))
+                dead_rect = self.dead.get_rect()
+                dead_rect.center = (ancho_ventana // 2, alto_ventana // 2)
+                self.screen.blit(self.dead, dead_rect)
+
+                self.retry = self.smaller_font.render('Presiona R para intentar de nuevo ', True, (200, 200, 200), (0, 0, 0))
+                retry_rect = self.retry.get_rect()
+                retry_rect.center = (ancho_ventana // 2, (alto_ventana // 2) + 40)
+                self.screen.blit(self.retry, retry_rect)
+                
+                self.mostrar_puntuaciones_altas()
+
+            pygame.display.flip()
+
+    def guardar_puntuacion(self):
+        # Obtener la puntuación final
+        puntuacion_final = round(self.score / 1000)
+        
+        # Intentar cargar el archivo JSON existente (si existe)
+        try:
+            with open('plataformas/puntuaciones_plataformas.json', 'r') as file:
+                puntuaciones = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            puntuaciones = []
+        
+        # Agregar la nueva puntuación a la lista
+        puntuaciones.append(puntuacion_final)
+
+        # Ordenar las puntuaciones de mayor a menor
+        puntuaciones.sort(reverse=True)
+
+        # Asegurarse de que haya un máximo de 20 puntuaciones
+        if len(puntuaciones) > 20:
+            puntuaciones = puntuaciones[:20]
+
+        # Guardar las puntuaciones en el archivo
+        with open('plataformas/puntuaciones_plataformas.json', 'w') as file:
+            json.dump(puntuaciones, file)
             
-        if self.dead:
-            self.dead = self.font.render('GAME OVER :(', True, (255,255,255), (0,0,0))
-            dead_rect = self.dead.get_rect()
-            dead_rect.center = (ancho_ventana // 2, alto_ventana// 2)
-            self.screen.blit(self.dead, dead_rect)
-            self.retry = self.smaller_font.render('Presiona enter para reintentar', True, (200,200,200), (0,0,0))
-            retry_rect = self.retry.get_rect()
-            retry_rect.center = (ancho_ventana // 2, (alto_ventana // 2) + 40)
-            self.screen.blit(self.retry, retry_rect)
+    def mostrar_puntuaciones_altas(self):
+    # Intentamos cargar las puntuaciones
+        try:
+            with open('plataformas/puntuaciones_plataformas.json', 'r') as file:
+                puntuaciones = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            puntuaciones = []
 
-        pygame.display.flip()
+        # Mostrar las 5 primeras puntuaciones
+        y_offset = 130  # Empieza un poco más abajo de la parte inferior de la pantalla
+        for i, puntuacion in enumerate(puntuaciones[:5]):  # Mostramos solo las 5 mejores
+            high_score_text = self.font.render(f'{i + 1}. {puntuacion} puntos', True, (255, 255, 255))  # Aquí agregamos "puntos"
+            high_score_rect = high_score_text.get_rect()
+            high_score_rect.centerx = ancho_ventana // 2
+            high_score_rect.top = y_offset + i * 30
+            self.screen.blit(high_score_text, high_score_rect)
 
     def loop(self):
         while self.running:

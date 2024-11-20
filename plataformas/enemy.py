@@ -7,7 +7,7 @@ import random
 ancho=80
 alto=80
 
-asset_size=48
+asset_size=32
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
@@ -34,7 +34,8 @@ class Enemy(pygame.sprite.Sprite):
 
     def load_assets(self):
         self.animations["walk"] = []
-        asset = pygame.image.load("sprites/City Enemies/5/Walk.png").convert_alpha()
+        asset = pygame.image.load("plataformas/img/7 Bird/Walk.png").convert_alpha()
+        asset = pygame.transform.flip(asset,flip_x=90,flip_y=0)
         width = asset.get_width()
         idx = 0
         while (idx*asset_size < width):
@@ -55,6 +56,7 @@ class Enemy(pygame.sprite.Sprite):
                 self.idxAnimation = len(self.animations[self.current_animation])-1
         self.surf = self.animations[self.current_animation][int(self.idxAnimation)]
         self.surf = pygame.transform.scale(self.surf, (ancho,alto))
+        self.surf= pygame.transform.rotate(self.surf,15)
         self.rect = self.surf.get_rect()
 
     #Solo moverlo a la izquierda segun la velocidad, etc
