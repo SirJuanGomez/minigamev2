@@ -12,12 +12,13 @@ from shield import Shield
 import globals
 import json
 
-
 class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode([ancho_ventana, alto_ventana])
         self.clock = pygame.time.Clock()
         self.running = True
+
+        self.dead_sound_played = False  # Cambié dead_sound a dead_sound_played
 
         pygame.init()
         pygame.display.set_caption("Plataformas")
@@ -41,6 +42,7 @@ class Game:
         self.player = Player()
         self.no_face = False
         self.dead = False
+        self.dead_sound_played = False
 
         self.platforms = []
         # First platform
@@ -75,6 +77,7 @@ class Game:
         """Reset the game state for a full restart."""
         # Reset the game elements
         self.player = Player()
+        self.dead_sound_played = False
         self.no_face = False
         self.dead = False
         self.platforms.clear()
@@ -198,7 +201,14 @@ class Game:
                 else:
                     # Dead, stop the game
                     self.dead = True
-                    pygame.mixer.Sound.play(self.death_sound)
+                    if not self.dead_sound_played:  # Reproducir el sonido solo una vez
+                        pygame.mixer.Sound.play(self.death_sound)
+                        self.dead_sound_played = True  # Marcar que el sonido ya se reprodujo
+
+                    # Llamar a guardar la puntuación solo una vez cuando el juego termina
+                    if self.dead and not getattr(self, 'puntuacion_guardada', False):
+                        self.guardar_puntuacion()
+                        self.puntuacion_guardada = True  # Evitar que se guarde varias veces
 
             if self.player.addScore > 0:
                 self.score += (self.player.addScore * 1000)
@@ -230,56 +240,56 @@ class Game:
             self.text_score_rect.x = (ancho_ventana // 2) - (self.text_score_rect.width // 2)
 
     def render(self):
-            self.screen.fill((92, 89, 92))
+        self.screen.fill((92, 89, 92))
 
-            self.background1.render(self.screen)
-            self.background2.render(self.screen)
+        self.background1.render(self.screen)
+        self.background2.render(self.screen)
 
-            for platform in self.platforms:
-                self.screen.blit(platform.surf, platform.rect)
+        for platform in self.platforms:
+            self.screen.blit(platform.surf, platform.rect)
 
-            self.screen.blit(self.player.surf, self.player.rect)
-            if self.player.shield:
-                self.screen.blit(self.player.shieldSurf, self.player.shieldRect)
+        self.screen.blit(self.player.surf, self.player.rect)
+        if self.player.shield:
+            self.screen.blit(self.player.shieldSurf, self.player.shieldRect)
 
-            for powerup in self.group_powerups:
-                self.screen.blit(powerup.surf, powerup.rect)
+        for powerup in self.group_powerups:
+            self.screen.blit(powerup.surf, powerup.rect)
 
-            for enemy in self.group_enemies.sprites():
-                self.screen.blit(enemy.surf, enemy.rect)
+        for enemy in self.group_enemies.sprites():
+            self.screen.blit(enemy.surf, enemy.rect)
 
-            for shield in self.group_shields:
-                self.screen.blit(shield.surf, shield.rect)
+        for shield in self.group_shields:
+            self.screen.blit(shield.surf, shield.rect)
 
-            if self.text_score:
-                self.screen.blit(self.text_score, self.text_score_rect)
+        if self.text_score:
+            self.screen.blit(self.text_score, self.text_score_rect)
 
-            if self.dead:
-                self.guardar_puntuacion()
-                self.dead = self.font.render('HAS PERDIDO', True, (255, 255, 255), (0, 0, 0))
-                dead_rect = self.dead.get_rect()
-                dead_rect.center = (ancho_ventana // 2, alto_ventana // 2)
-                self.screen.blit(self.dead, dead_rect)
+        if self.dead:
+            self.guardar_puntuacion()
+            self.dead = self.font.render('HAS PERDIDO', True, (255, 255, 255), (0, 0, 0))
+            dead_rect = self.dead.get_rect()
+            dead_rect.center = (ancho_ventana // 2, alto_ventana // 2)
+            self.screen.blit(self.dead, dead_rect)
 
-                self.retry = self.smaller_font.render('Presiona R para intentar de nuevo ', True, (200, 200, 200), (0, 0, 0))
-                retry_rect = self.retry.get_rect()
-                retry_rect.center = (ancho_ventana // 2, (alto_ventana // 2) + 40)
-                self.screen.blit(self.retry, retry_rect)
-                
-                self.mostrar_puntuaciones_altas()
+            self.retry = self.smaller_font.render('Presiona R para intentar de nuevo ', True, (200, 200, 200), (0, 0, 0))
+            retry_rect = self.retry.get_rect()
+            retry_rect.center = (ancho_ventana // 2, (alto_ventana // 2) + 40)
+            self.screen.blit(self.retry, retry_rect)
+            
+            self.mostrar_puntuaciones_altas()
 
-            pygame.display.flip()
+        pygame.display.flip()
 
     def guardar_puntuacion(self):
         # Obtener la puntuación final
-        puntuacion_final = round(self.score / 1000)
-        
+        puntuacion_final = int(self.score)  # Guardamos la puntuación completa sin dividirla por 1000
+
         # Intentar cargar el archivo JSON existente (si existe)
         try:
             with open('plataformas/puntuaciones_plataformas.json', 'r') as file:
-                puntuaciones = json.load(file)
+                puntuaciones = json.load(file)  # Cargar las puntuaciones existentes
         except (FileNotFoundError, json.JSONDecodeError):
-            puntuaciones = []
+            puntuaciones = []  # Si no existe el archivo o hay un error, comenzamos con una lista vacía
         
         # Agregar la nueva puntuación a la lista
         puntuaciones.append(puntuacion_final)
@@ -288,30 +298,54 @@ class Game:
         puntuaciones.sort(reverse=True)
 
         # Asegurarse de que haya un máximo de 20 puntuaciones
-        if len(puntuaciones) > 20:
-            puntuaciones = puntuaciones[:20]
+        if len(puntuaciones) > 2:
+            puntuaciones = puntuaciones[:2]  # Limitar a las 20 mejores puntuaciones
 
-        # Guardar las puntuaciones en el archivo
+        # Guardar las puntuaciones actualizadas en el archivo
         with open('plataformas/puntuaciones_plataformas.json', 'w') as file:
             json.dump(puntuaciones, file)
-            
+
     def mostrar_puntuaciones_altas(self):
     # Intentamos cargar las puntuaciones
         try:
             with open('plataformas/puntuaciones_plataformas.json', 'r') as file:
-                puntuaciones = json.load(file)
+                puntuaciones = json.load(file)  # Cargar las puntuaciones del archivo
         except (FileNotFoundError, json.JSONDecodeError):
-            puntuaciones = []
+            puntuaciones = []  # Si no existe el archivo o hay un error, comenzamos con una lista vacía
 
-        # Mostrar las 5 primeras puntuaciones
-        y_offset = 130  # Empieza un poco más abajo de la parte inferior de la pantalla
-        for i, puntuacion in enumerate(puntuaciones[:5]):  # Mostramos solo las 5 mejores
-            high_score_text = self.font.render(f'{i + 1}. {puntuacion} puntos', True, (255, 255, 255))  # Aquí agregamos "puntos"
+        # Cargar la fuente de Intensamente (suponiendo que tienes el archivo 'intensamente.ttf')
+        try:
+            self.font = pygame.font.Font('intensamente.ttf', 24)  # Fuente para las puntuaciones
+            self.font_bold = pygame.font.Font('intensamente.ttf', 30)  # Fuente para el título con mayor tamaño
+        except:
+            # Si no se puede cargar la fuente, utilizamos la fuente predeterminada
+            self.font = pygame.font.SysFont('Arial', 24)
+            self.font_bold = pygame.font.SysFont('Arial', 30)
+
+        # Configuración del área para las puntuaciones
+        puntuaciones_width = 300  # Ancho del fondo
+        puntuaciones_height = 160  # Alto del fondo (un poco más grande para incluir el título)
+        puntuaciones_rect = pygame.Rect((ancho_ventana // 2 - puntuaciones_width // 2, 120), (puntuaciones_width, puntuaciones_height))
+        
+        # Dibujar el fondo negro con borde blanco
+        pygame.draw.rect(self.screen, (0, 0, 0), puntuaciones_rect)  # Fondo negro
+        pygame.draw.rect(self.screen, (255, 255, 255), puntuaciones_rect, 3)  # Borde blanco
+
+        # Renderizar el texto de "Mejores Puntuaciones" dentro del fondo
+        titulo_texto = self.font_bold.render('Mejores Puntuaciones', True, (255, 255, 255))
+        titulo_rect = titulo_texto.get_rect()
+        titulo_rect.centerx = puntuaciones_rect.centerx  # Centrar horizontalmente dentro del rectángulo
+        titulo_rect.top = puntuaciones_rect.top + 10  # Ubicarlo un poco más cerca de la parte superior
+        self.screen.blit(titulo_texto, titulo_rect)
+
+        # Mostrar las 3 primeras puntuaciones
+        y_offset = 40  # Reducir el espacio entre el título y las puntuaciones
+        for i, puntuacion in enumerate(puntuaciones[:3]):  # Mostramos solo las 3 mejores
+            high_score_text = self.font.render(f'{i + 1}. {puntuacion // 1000} puntos', True, (255, 255, 255))  # Dividir la puntuación por 1000 al mostrarla
             high_score_rect = high_score_text.get_rect()
-            high_score_rect.centerx = ancho_ventana // 2
-            high_score_rect.top = y_offset + i * 30
+            high_score_rect.centerx = puntuaciones_rect.centerx  # Alinear al centro del rectángulo
+            high_score_rect.top = puntuaciones_rect.top + y_offset + i * 30  # Posición vertical ajustada
             self.screen.blit(high_score_text, high_score_rect)
-
     def loop(self):
         while self.running:
             time = pygame.time.get_ticks()
